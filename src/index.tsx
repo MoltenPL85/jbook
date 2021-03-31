@@ -9,16 +9,16 @@ const App = () => {
   const [input, setInput] = useState('');
   const [code, setCode] = useState('');
 
-  useEffect(() => {
-    startService();
-  }, []);
-
   const startService = async () => {
     ref.current = await esbuild.startService({
       worker: true,
-      wasmURL: '/esbuild.wasm',
+      wasmURL: 'https://unpkg.com/esbuild-wasm@0.11.2/esbuild.wasm',
     });
   };
+
+  useEffect(() => {
+    startService();
+  }, []);
 
   const onClick = async () => {
     if (!ref.current) {
