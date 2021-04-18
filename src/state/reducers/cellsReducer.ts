@@ -1,7 +1,7 @@
 import produce from 'immer';
 import { ActionType } from '../action-types';
 import { Action } from '../actions';
-import { Cell } from '../cell';
+import { Cell, CellTypes } from '../cell';
 
 interface CellsState {
   loading: boolean;
@@ -19,53 +19,75 @@ const initialState: CellsState = {
   data: {},
 };
 
-const reducer = produce((state: CellsState = initialState, action: Action) => {
-  switch (action.type) {
-    case ActionType.UPDATE_CELL:
-      const { id, content } = action.payload;
-      state.data[id].content = content;
-      return;
-    case ActionType.DELETE_CELL:
-      delete state.data[action.payload];
-      state.order = state.order.filter((id) => id !== action.payload);
-      return;
-    case ActionType.MOVE_CELL:
-      const { direction } = action.payload;
-      const index = state.order.findIndex((id) => id === action.payload.id);
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+interface Produce {
+  (
+    base:
+      | {
+          readonly loading: boolean;
+          readonly error: string | null;
+          readonly order: readonly string[];
+          readonly data: {
+            readonly [x: string]: {
+              readonly id: string;
+              readonly type: CellTypes;
+              readonly content: string;
+            };
+          };
+        }
+      | undefined,
+    action: Action
+  ): CellsState;
+}
 
-      if (targetIndex < 0 || targetIndex > state.order.length - 1) {
-        return;
-      }
+const reducer: Produce = produce(
+  (state: CellsState = initialState, action: Action) => {
+    switch (action.type) {
+      case ActionType.UPDATE_CELL:
+        const { id, content } = action.payload;
+        state.data[id].content = content;
+        return state;
+      case ActionType.DELETE_CELL:
+        delete state.data[action.payload];
+        state.order = state.order.filter((id) => id !== action.payload);
+        return state;
+      case ActionType.MOVE_CELL:
+        const { direction } = action.payload;
+        const index = state.order.findIndex((id) => id === action.payload.id);
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
 
-      state.order[index] = state.order[targetIndex];
-      state.order[targetIndex] = action.payload.id;
+        if (targetIndex < 0 || targetIndex > state.order.length - 1) {
+          return state;
+        }
 
-      return;
-    case ActionType.INSERT_CELL_BEFORE:
-      const cell: Cell = {
-        content: '',
-        type: action.payload.type,
-        id: randomId(),
-      };
+        state.order[index] = state.order[targetIndex];
+        state.order[targetIndex] = action.payload.id;
 
-      state.data[cell.id] = cell;
+        return state;
+      case ActionType.INSERT_CELL_BEFORE:
+        const cell: Cell = {
+          content: '',
+          type: action.payload.type,
+          id: randomId(),
+        };
 
-      const foundIndex = state.order.findIndex(
-        (id) => id === action.payload.id
-      );
+        state.data[cell.id] = cell;
 
-      if (foundIndex < 0) {
-        state.order.push(cell.id);
-      } else {
-        state.order.splice(foundIndex, 0, cell.id);
-      }
+        const foundIndex = state.order.findIndex(
+          (id) => id === action.payload.id
+        );
 
-      return;
-    default:
-      return state;
+        if (foundIndex < 0) {
+          state.order.push(cell.id);
+        } else {
+          state.order.splice(foundIndex, 0, cell.id);
+        }
+
+        return state;
+      default:
+        return state;
+    }
   }
-});
+);
 
 const randomId = () => {
   return Math.random().toString(36).substr(2, 5);
